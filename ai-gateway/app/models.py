@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 class ChatMessage(BaseModel):
     role: Literal["system", "user", "assistant"]
-    content: str
+    content: str | list[dict] = ""
 
 
 class ChatCompletionRequest(BaseModel):

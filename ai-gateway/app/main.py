@@ -7,6 +7,8 @@ import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+import httpx
+
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -35,7 +37,9 @@ def _extract_user_preview(messages) -> str:
     """提取用户消息预览。"""
     for msg in reversed(messages):
         if msg.role == "user":
-            return msg.content[:50]
+            if isinstance(msg.content, str):
+                return msg.content[:50]
+            return "[多模态消息]"
     return ""
 
 
@@ -77,6 +81,21 @@ async def chat_completions(request: ChatCompletionRequest):
     # 对外默认模型名（如 "auto"）视为空，使用渠道配置的实际模型
     effective_model = request.model if request.model and request.model != settings.default_model else ""
 
+    # 检测是否包含图片等多模态内容
+    has_image = False
+    for msg in request.messages:
+        if isinstance(msg.content, list):
+            for part in msg.content:
+                if isinstance(part, dict) and part.get("type") == "image_url":
+                    has_image = True
+                    break
+
+    if has_image:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "当前模型不支持图片输入，请使用纯文本消息", "code": "image_not_supported"},
+        )
+
     if route == "light":
         ch = settings.get_light_channel()
         if not ch:
@@ -87,7 +106,6 @@ async def chat_completions(request: ChatCompletionRequest):
         try:
             if request.stream:
                 response_iter = light_model.stream_chat(request, ch.base_url, ch.api_key, model_name)
-                # 流式请求：记录使用（响应时间用启动时间估算）
                 elapsed = int((time.monotonic() - start_time) * 1000)
                 history.add_usage({
                     "id": req_id, "timestamp": time.time(),
@@ -114,6 +132,22 @@ async def chat_completions(request: ChatCompletionRequest):
                     "user_msg_preview": user_preview,
                 })
                 return JSONResponse(content=data)
+        except httpx.HTTPStatusError as e:
+            elapsed = int((time.monotonic() - start_time) * 1000)
+            history.add_usage({
+                "id": req_id, "timestamp": time.time(),
+                "channel_id": ch.id, "channel_name": ch.name,
+                "channel_type": "light", "model": request.model or "",
+                "mapped_model": model_name, "stream": request.stream,
+                "success": False, "response_ms": elapsed,
+                "error": str(e)[:200], "user_msg_preview": user_preview,
+            })
+            try:
+                err_body = e.response.json()
+                err_msg = err_body.get("error", {}).get("message", str(e))
+            except Exception:
+                err_msg = str(e)
+            return JSONResponse(status_code=e.response.status_code, content={"error": err_msg})
         except Exception as e:
             elapsed = int((time.monotonic() - start_time) * 1000)
             history.add_usage({
@@ -124,7 +158,7 @@ async def chat_completions(request: ChatCompletionRequest):
                 "success": False, "response_ms": elapsed,
                 "error": str(e)[:200], "user_msg_preview": user_preview,
             })
-            raise
+            return JSONResponse(status_code=500, content={"error": f"上游请求失败: {str(e)[:200]}"})
 
     else:  # big
         ch = settings.get_big_channel()
@@ -162,6 +196,22 @@ async def chat_completions(request: ChatCompletionRequest):
                     "user_msg_preview": user_preview,
                 })
                 return JSONResponse(content=data)
+        except httpx.HTTPStatusError as e:
+            elapsed = int((time.monotonic() - start_time) * 1000)
+            history.add_usage({
+                "id": req_id, "timestamp": time.time(),
+                "channel_id": ch.id, "channel_name": ch.name,
+                "channel_type": "big", "model": request.model or "",
+                "mapped_model": model_name, "stream": request.stream,
+                "success": False, "response_ms": elapsed,
+                "error": str(e)[:200], "user_msg_preview": user_preview,
+            })
+            try:
+                err_body = e.response.json()
+                err_msg = err_body.get("error", {}).get("message", str(e))
+            except Exception:
+                err_msg = str(e)
+            return JSONResponse(status_code=e.response.status_code, content={"error": err_msg})
         except Exception as e:
             elapsed = int((time.monotonic() - start_time) * 1000)
             history.add_usage({
@@ -172,7 +222,7 @@ async def chat_completions(request: ChatCompletionRequest):
                 "success": False, "response_ms": elapsed,
                 "error": str(e)[:200], "user_msg_preview": user_preview,
             })
-            raise
+            return JSONResponse(status_code=500, content={"error": f"上游请求失败: {str(e)[:200]}"})
 
 
 @app.get("/v1/models")

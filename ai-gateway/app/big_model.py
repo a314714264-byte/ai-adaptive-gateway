@@ -11,10 +11,15 @@ from app.queue_manager import QueueManager
 logger = logging.getLogger("big_model")
 
 
+def _serialize_content(content: str | list[dict]) -> str | list[dict]:
+    """序列化消息内容，处理图片等多模态格式。"""
+    return content
+
+
 def _build_payload(request: ChatCompletionRequest, model_name: str, stream: bool) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "model": model_name,
-        "messages": [{"role": m.role, "content": m.content} for m in request.messages],
+        "messages": [{"role": m.role, "content": _serialize_content(m.content)} for m in request.messages],
         "temperature": request.temperature,
         "stream": stream,
     }
