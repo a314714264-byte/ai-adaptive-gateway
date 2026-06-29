@@ -108,6 +108,14 @@ docker-compose up -d
 | POST | `/channels/{id}/test` | 测试通道 |
 | GET | `/history/stats` | 统计信息 |
 
+### 文档
+
+更多详细文档见 `docs/` 目录：
+
+- [项目实现计划](docs/01-plan.md) — 架构设计、文件清单、实现细节
+- [前端 PRD](docs/02-frontend-prd.md) — 产品需求文档
+- [前端技术架构](docs/03-frontend-tech.md) — 技术选型、组件设计
+
 ---
 
 ## English
@@ -211,6 +219,14 @@ Edit `data/config.json` to configure upstream channels:
 | GET/POST/PUT/DELETE | `/channels` | Channel CRUD |
 | POST | `/channels/{id}/test` | Test a channel |
 | GET | `/history/stats` | Usage statistics |
+
+### Documentation
+
+More detailed documents are available in the `docs/` directory:
+
+- [Project Plan](docs/01-plan.md) — Architecture, file structure, and implementation details
+- [Frontend PRD](docs/02-frontend-prd.md) — Product requirements for the frontend and admin panel
+- [Frontend Tech Spec](docs/03-frontend-tech.md) — Frontend technology architecture and component design
 
 ### License
 
