@@ -31,7 +31,7 @@ Thumbs.db
 # Project specific
 .trae/
 graphify-out/
-ai-gateway/data/config.json
+data/config.json
 
 # Logs
 logs
