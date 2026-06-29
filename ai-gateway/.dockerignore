@@ -1,0 +1,11 @@
+__pycache__
+*.pyc
+*.pyo
+data/
+graphify-out/
+node_modules/
+admin/dist/
+frontend/dist/
+.git
+.env
+*.md

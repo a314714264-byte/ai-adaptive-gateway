@@ -1,0 +1,13 @@
+services:
+  ai-gateway:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - gateway-data:/app/data
+    environment:
+      - TZ=Asia/Shanghai
+    restart: unless-stopped
+
+volumes:
+  gateway-data:
